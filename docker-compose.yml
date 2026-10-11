@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: minipoll, POSTGRES_PASSWORD: minipoll, POSTGRES_DB: minipoll }
+    volumes: [dbdata:/var/lib/postgresql/data]
+  backend:
+    build: ./backend
+    environment: { DB_HOST: db, ENABLE_DEBUG: "true" }
+    depends_on: [db]
+  frontend:
+    build: ./frontend
+    environment: { BACKEND_HOST: "backend:3000" }
+    ports: ["8080:8080"]
+    depends_on: [backend]
+volumes: { dbdata: {} }

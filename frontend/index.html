@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>minipoll</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--beige:#f3ead8;--beige-d:#e6d9bd;--paper:#fbf6ea;--green:#b9dfa6;--green-d:#8cc477;--ink:#34402c;--muted:#7a826b;--err:#a8452f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--beige);color:var(--ink);font:400 17px/1.5 Figtree,system-ui,sans-serif}
+header{max-width:640px;margin:0 auto;padding:28px 20px 0}
+header a{font:800 28px 'Bricolage Grotesque',sans-serif;color:var(--ink);text-decoration:none;letter-spacing:-.03em}
+header a span{background:var(--green);padding:0 .22em;border-radius:.3em;margin-left:.05em}
+main{max-width:640px;margin:0 auto;padding:24px 20px 64px}
+h1{font:700 clamp(28px,6vw,40px)/1.1 'Bricolage Grotesque',sans-serif;letter-spacing:-.02em;margin:0 0 20px}
+.panel{background:var(--paper);border:2px solid var(--beige-d);border-radius:20px;padding:24px}
+label{display:block;font-weight:600;margin:0 0 6px}
+input[type=text]{width:100%;padding:12px 14px;font:inherit;color:var(--ink);background:#fff;border:2px solid var(--beige-d);border-radius:12px;margin-bottom:12px}
+input:focus,button:focus-visible{outline:3px solid var(--green-d);outline-offset:2px}
+button{font:700 16px Figtree,sans-serif;color:var(--ink);background:var(--green);border:2px solid var(--green-d);border-radius:12px;padding:12px 20px;cursor:pointer}
+button:hover{background:var(--green-d)}
+button.ghost{background:transparent;border-color:var(--beige-d)}
+button.ghost:hover{background:var(--beige-d)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.opt{display:block;width:100%;text-align:left;margin-bottom:10px;background:#fff;border-color:var(--beige-d);padding:14px 16px}
+.opt:hover{border-color:var(--green-d);background:#f1f9ea}
+.bar{position:relative;background:#fff;border:2px solid var(--beige-d);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--green);transition:width .5s ease}
+.bar div{position:relative;display:flex;justify-content:space-between;gap:12px;padding:12px 14px;font-weight:600}
+.meta{color:var(--muted);font-size:15px;margin:12px 0 0}
+.err{color:var(--err);font-weight:600;min-height:1.5em;margin:4px 0}
+.share{display:flex;gap:8px;margin-top:20px}.share input{margin:0}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<header><a href="#/">mini<span>poll</span></a></header>
+<main id="app"></main>
+<script>
+const app = document.getElementById("app");
+let timer;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const api = async (path, body) => {
+  const r = await fetch("/api" + path, body && {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "Something went wrong. Try again.");
+  return d;
+};
+
+function home() {
+  app.innerHTML = `<h1>Ask a question, get answers fast.</h1>
+  <div class="panel">
+    <label for="q">Your question</label>
+    <input type="text" id="q" maxlength="200" placeholder="Where should we eat on Friday?">
+    <label>Options</label>
+    <div id="opts"></div>
+    <div class="row"><button class="ghost" id="add">Add option</button><button id="go">Create poll</button></div>
+    <p class="err" id="err" role="alert"></p>
+  </div>`;
+  const opts = document.getElementById("opts");
+  const addOpt = () => { if (opts.children.length < 8) opts.insertAdjacentHTML("beforeend", `<input type="text" maxlength="100" aria-label="Option ${opts.children.length + 1}" placeholder="Option ${opts.children.length + 1}">`); };
+  addOpt(); addOpt();
+  document.getElementById("add").onclick = addOpt;
+  document.getElementById("go").onclick = async () => {
+    try {
+      const {id} = await api("/polls", {question: document.getElementById("q").value, options: [...opts.children].map(i => i.value)});
+      location.hash = "#/p/" + id;
+    } catch (e) { document.getElementById("err").textContent = e.message; }
+  };
+}
+
+async function poll(id) {
+  let showResults = !!localStorage.getItem("voted:" + id);
+  const render = async () => {
+    let p;
+    try { p = await api("/polls/" + id); }
+    catch (e) { app.innerHTML = `<h1>Poll not found</h1><p>${esc(e.message)} <a href="#/">Create a new poll</a>.</p>`; clearInterval(timer); return; }
+    const link = location.href;
+    if (!showResults) {
+      app.innerHTML = `<h1>${esc(p.question)}</h1><div class="panel">
+        ${p.options.map(o => `<button class="opt" data-id="${o.id}">${esc(o.label)}</button>`).join("")}
+        <div class="row"><button class="ghost" id="see">See results</button></div>
+        <p class="err" id="err" role="alert"></p></div>`;
+      app.querySelectorAll(".opt").forEach(b => b.onclick = async () => {
+        try { await api(`/polls/${id}/vote`, {optionId: b.dataset.id}); localStorage.setItem("voted:" + id, "1"); showResults = true; render(); }
+        catch (e) { document.getElementById("err").textContent = e.message; }
+      });
+      document.getElementById("see").onclick = () => { showResults = true; render(); };
+      return;
+    }
+    app.innerHTML = `<h1>${esc(p.question)}</h1><div class="panel">
+      ${p.options.map(o => { const pct = p.total ? Math.round(o.votes * 100 / p.total) : 0;
+        return `<div class="bar"><i style="width:${pct}%"></i><div><span>${esc(o.label)}</span><span>${pct}% (${o.votes})</span></div></div>`; }).join("")}
+      <p class="meta">${p.total} vote${p.total === 1 ? "" : "s"}. Results refresh every 2 seconds.</p>
+      <div class="share"><input type="text" readonly value="${esc(link)}" aria-label="Poll link"><button id="copy">Copy link</button></div>
+    </div>`;
+    document.getElementById("copy").onclick = e => { navigator.clipboard.writeText(link); e.target.textContent = "Copied"; };
+  };
+  await render();
+  clearInterval(timer);
+  timer = setInterval(() => { if (showResults) render(); }, 2000);
+}
+
+function route() {
+  clearInterval(timer);
+  const m = location.hash.match(/^#\/p\/([a-f0-9]+)/);
+  m ? poll(m[1]) : home();
+}
+addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
