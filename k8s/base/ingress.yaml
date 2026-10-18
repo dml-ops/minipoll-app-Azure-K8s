@@ -1,0 +1,12 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress                        # like an ALB listener rule
+metadata: { name: minipoll, namespace: frontend }   # must be in the same namespace as its Service
+spec:
+  ingressClassName: nginx            # which controller handles it (changes on Azure)
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: frontend, port: { number: 80 } }

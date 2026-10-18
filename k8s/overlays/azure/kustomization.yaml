@@ -1,0 +1,25 @@
+resources:
+  - ../../base
+
+images:
+  - name: minipoll-backend
+    newName: "**ACR_LOGIN_SERVER**/minipoll-backend"
+    newTag: "**IMAGE_TAG**"
+  - name: minipoll-frontend
+    newName: "**ACR_LOGIN_SERVER**/minipoll-frontend"
+    newTag: "**IMAGE_TAG**"
+
+patches:
+  - target: { kind: Ingress, name: minipoll }
+    patch: |-
+      - op: replace
+        path: /spec/ingressClassName
+        value: webapprouting.kubernetes.azure.com
+  - target: { kind: ConfigMap, name: backend-config }
+    patch: |-
+      - op: replace
+        path: /data/DB_HOST
+        value: "**POSTGRES_FQDN**"
+      - op: replace
+        path: /data/DB_SSL
+        value: "true"

@@ -1,0 +1,7 @@
+resources:
+  - namespaces.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - networkpolicies.yaml
