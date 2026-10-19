@@ -3,11 +3,11 @@ resources:
 
 images:
   - name: minipoll-backend
-    newName: "**minipollacr4vvuo.azurecr.io**/minipoll-backend"
-    newTag: "**IMAGE_TAG**"
+    newName: "minipollacr4vvuo.azurecr.io/minipoll-backend"
+    newTag: "IMAGE_TAG"
   - name: minipoll-frontend
-    newName: "**minipollacr4vvuo.azurecr.io**/minipoll-frontend"
-    newTag: "**IMAGE_TAG**"
+    newName: "minipollacr4vvuo.azurecr.io/minipoll-frontend"
+    newTag: "IMAGE_TAG"
 
 patches:
   - target: { kind: Ingress, name: minipoll }
@@ -19,7 +19,7 @@ patches:
     patch: |-
       - op: replace
         path: /data/DB_HOST
-        value: "**minipoll-pg-4vvuo.postgres.database.azure.com**"
+        value: "minipoll-pg-4vvuo.postgres.database.azure.com"
       - op: replace
         path: /data/DB_SSL
         value: "true"
