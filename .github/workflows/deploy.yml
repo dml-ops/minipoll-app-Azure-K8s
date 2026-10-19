@@ -1,0 +1,59 @@
+name: Deploy minipoll to AKS
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  id-token: write      # required for OIDC login
+  contents: read
+
+concurrency: deploy    # never run two deploys at once
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ACR: ${{ vars.ACR_NAME }}.azurecr.io
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC, no stored keys)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push images
+        run: |
+          az acr login --name ${{ vars.ACR_NAME }}
+          docker build -t $ACR/minipoll-backend:$TAG ./backend
+          docker build -t $ACR/minipoll-frontend:$TAG ./frontend
+          docker push $ACR/minipoll-backend:$TAG
+          docker push $ACR/minipoll-frontend:$TAG
+
+      - name: Connect to AKS
+        run: az aks get-credentials -g ${{ vars.RESOURCE_GROUP }} -n ${{ vars.AKS_NAME }} --admin --overwrite-existing
+
+      - name: Namespaces and database secret
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          kubectl apply -f k8s/base/namespaces.yaml
+          kubectl create secret generic db-credentials -n backend \
+            --from-literal=DB_USER=minipolladmin \
+            --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy
+        run: |
+          sed -i "s|IMAGE_TAG|$TAG|g" k8s/overlays/azure/kustomization.yaml
+          kubectl apply -k k8s/overlays/azure
+
+      - name: Wait for rollout (fails the pipeline if it does not succeed)
+        run: |
+          kubectl rollout status deployment/backend -n backend --timeout=180s
+          kubectl rollout status deployment/frontend -n frontend --timeout=180s
