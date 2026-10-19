@@ -3,10 +3,10 @@ resources:
 
 images:
   - name: minipoll-backend
-    newName: "**ACR_LOGIN_SERVER**/minipoll-backend"
+    newName: "**minipollacr4vvuo.azurecr.io**/minipoll-backend"
     newTag: "**IMAGE_TAG**"
   - name: minipoll-frontend
-    newName: "**ACR_LOGIN_SERVER**/minipoll-frontend"
+    newName: "**minipollacr4vvuo.azurecr.io**/minipoll-frontend"
     newTag: "**IMAGE_TAG**"
 
 patches:
@@ -19,7 +19,7 @@ patches:
     patch: |-
       - op: replace
         path: /data/DB_HOST
-        value: "**POSTGRES_FQDN**"
+        value: "**minipoll-pg-4vvuo.postgres.database.azure.com**"
       - op: replace
         path: /data/DB_SSL
         value: "true"
