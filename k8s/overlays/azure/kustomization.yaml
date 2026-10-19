@@ -23,3 +23,6 @@ patches:
       - op: replace
         path: /data/DB_SSL
         value: "true"
+      - op: replace
+        path: /data/ENABLE_DEBUG
+        value: "false"
