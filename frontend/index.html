@@ -45,7 +45,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
 const api = async (path, body) => {
   const r = await fetch("/api" + path, body && {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error || "Something went wrong. Try again.");
+  if (!r.ok) { const e = new Error(d.error || "Something went wrong. Try again."); e.status = r.status; throw e; }
   return d;
 };
 
@@ -76,7 +76,13 @@ async function poll(id) {
   const render = async () => {
     let p;
     try { p = await api("/polls/" + id); }
-    catch (e) { app.innerHTML = `<h1>Poll not found</h1><p>${esc(e.message)} <a href="/">Create a new poll</a>.</p>`; clearInterval(timer); return; }
+    catch (e) {
+      clearInterval(timer);
+      app.innerHTML = e.status === 404
+        ? `<h1>Poll not found</h1><p>This poll does not exist. <a href="/">Create a new poll</a>.</p>`
+        : `<h1>Could not load this poll</h1><p>The server did not answer properly (${esc(e.message)}). Wait a moment and <a href="" onclick="location.reload();return false">try again</a>.</p>`;
+      return;
+    }
     const link = location.href;
     if (!showResults) {
       app.innerHTML = `<h1>${esc(p.question)}</h1><div class="panel">
