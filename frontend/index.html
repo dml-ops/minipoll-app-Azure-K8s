@@ -36,7 +36,7 @@ button.ghost:hover{background:var(--beige-d)}
 </style>
 </head>
 <body>
-<header><a href="#/">mini<span>poll</span></a></header>
+<header><a href="/">mini<span>poll</span></a></header>
 <main id="app"></main>
 <script>
 const app = document.getElementById("app");
@@ -66,7 +66,7 @@ function home() {
   document.getElementById("go").onclick = async () => {
     try {
       const {id} = await api("/polls", {question: document.getElementById("q").value, options: [...opts.children].map(i => i.value)});
-      location.hash = "#/p/" + id;
+      history.pushState(null, "", "/p/" + id); route();
     } catch (e) { document.getElementById("err").textContent = e.message; }
   };
 }
@@ -76,7 +76,7 @@ async function poll(id) {
   const render = async () => {
     let p;
     try { p = await api("/polls/" + id); }
-    catch (e) { app.innerHTML = `<h1>Poll not found</h1><p>${esc(e.message)} <a href="#/">Create a new poll</a>.</p>`; clearInterval(timer); return; }
+    catch (e) { app.innerHTML = `<h1>Poll not found</h1><p>${esc(e.message)} <a href="/">Create a new poll</a>.</p>`; clearInterval(timer); return; }
     const link = location.href;
     if (!showResults) {
       app.innerHTML = `<h1>${esc(p.question)}</h1><div class="panel">
@@ -105,10 +105,10 @@ async function poll(id) {
 
 function route() {
   clearInterval(timer);
-  const m = location.hash.match(/^#\/p\/([a-f0-9]+)/);
+  const m = location.pathname.match(/^\/p\/([a-f0-9]+)/);
   m ? poll(m[1]) : home();
 }
-addEventListener("hashchange", route);
+addEventListener("popstate", route);
 route();
 </script>
 </body>
