@@ -66,6 +66,7 @@ function home() {
   document.getElementById("go").onclick = async () => {
     try {
       const {id} = await api("/polls", {question: document.getElementById("q").value, options: [...opts.children].map(i => i.value)});
+      localStorage.setItem("mine:" + id, "1");
       history.pushState(null, "", "/p/" + id); route();
     } catch (e) { document.getElementById("err").textContent = e.message; }
   };
@@ -73,6 +74,7 @@ function home() {
 
 async function poll(id) {
   let showResults = !!localStorage.getItem("voted:" + id);
+  const isOwner = !!localStorage.getItem("mine:" + id);   // only the poll creator may peek at results
   const render = async () => {
     let p;
     try { p = await api("/polls/" + id); }
@@ -87,13 +89,17 @@ async function poll(id) {
     if (!showResults) {
       app.innerHTML = `<h1>${esc(p.question)}</h1><div class="panel">
         ${p.options.map(o => `<button class="opt" data-id="${o.id}">${esc(o.label)}</button>`).join("")}
-        <div class="row"><button class="ghost" id="see">See results</button></div>
+        ${isOwner ? `<div class="row"><button class="ghost" id="see">See results</button></div>
+        <div class="share"><input type="text" readonly value="${esc(link)}" aria-label="Poll link"><button id="copy">Copy link</button></div>` : ""}
         <p class="err" id="err" role="alert"></p></div>`;
       app.querySelectorAll(".opt").forEach(b => b.onclick = async () => {
         try { await api(`/polls/${id}/vote`, {optionId: b.dataset.id}); localStorage.setItem("voted:" + id, "1"); showResults = true; render(); }
         catch (e) { document.getElementById("err").textContent = e.message; }
       });
-      document.getElementById("see").onclick = () => { showResults = true; render(); };
+      const see = document.getElementById("see");
+      if (see) see.onclick = () => { showResults = true; render(); };
+      const cp = document.getElementById("copy");
+      if (cp) cp.onclick = e => { navigator.clipboard.writeText(link); e.target.textContent = "Copied"; };
       return;
     }
     app.innerHTML = `<h1>${esc(p.question)}</h1><div class="panel">
